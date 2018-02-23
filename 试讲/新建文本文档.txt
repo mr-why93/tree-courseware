@@ -1,0 +1,10 @@
+1 ID3算法决策点
+2 ID3算法建树过程
+3 离散化和二分类
+4 CART算法决策点
+5 CART建树过程
+6 ROC曲线和AUC值
+7 bagging集成方法
+8 adaboost过程与决策树桩
+9 adaboost算法集成过程
+10 sklearn中随机森林的调参方法

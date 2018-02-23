@@ -1,0 +1,255 @@
+# def gini(groups,class_values):
+# ##由于groups由左右两部分组成，此时标签列获取不容易，
+# ##因此通过传入获得
+# ##相当于ID3中求最优特征索引的最内层循环
+# 	gini=0.0
+# 	total_len=float(len(groups[0])+len(groups[1]))
+# 	for class_value in class_values:
+# 		for group in groups:
+# 			len_group=len(group)
+# 			proporition=[row[-1] for row in group].count(class_values)/float(len_group))
+# 			gini+=float(len_group)/total_len*proportion*(1-proporition)
+# 	return gini
+
+# def split(data,index,value):
+# 	#和ID3处的不同，每次不删列
+# 	#value是作为分割线，而不是等于才取
+# 	left,right=[],[]
+# 	for row in data:
+# 		if row[index]<value:
+# 			left.append(row)
+# 		else:
+# 			right.append(row)
+# 	return left,right
+
+# def getBestSplit(data):
+# 	class_values=list(set([row[-1] for row in data]))
+# 	b_index,b_value,b_gini,b_groups=999,999,999,None
+# 	#前两个随便设置，b_gini 要足够大
+# 	features=range(0,len(data[0])-1)
+
+# 	for index in features:
+# 		fea_Space=list(set([row[index] for row in data]))
+# 		#这里用的二分值方法是直接取每个数作为二分边界
+# 		for fea in fea_Space:
+# 			groups=split(data,index,fea)
+# 			gini=gini(groups,class_values)
+# 			if gini<b_gini:
+# 				b_gini=gini
+# 				b_index=index,b_value=fea,b_groups=groups
+# 	return {'index':b_index,'value':b_value,'left':gropus[0],'right':groups[1]}
+
+# def toLeafNode(label_List):
+# 	return max(set(label_list),key=label_list.count)
+
+# def create_Tree(data):
+# 	##此时的递归进行调整，从第二项开始递归
+# 	##这里还是从第一项开始，作为比较，会比较麻烦
+# 	labelList=[d[-1]  for d in data]
+# 	if (len(set(labelList))==1):
+# 		return toLeafNode(labelList)
+
+
+# 	node=getBestSplit(data)
+# 	left,right=node['left'],node['right']
+
+# 	tree={'index':node[b_index],'value':node[b_value],'left':[],'right':[]}
+# 	tree['left']=createTree(left)
+# 	tree['right']=createTree(right)
+# 	return tree
+
+
+
+from random import randrange
+from csv import reader
+from math import log
+from math import sqrt
+
+def load_csv(filename):
+	dataSet=list()
+	with open(filename,'r') as file:
+		csv_reader=reader(file)
+		for row in csv_reader:
+			if not row :
+				continue
+			dataSet.append(row)
+	return dataSet
+
+
+# dataSet字符型转换为浮点型
+def str_column_to_float(dataSet,column):
+	for row in dataSet:
+		row[column]=float(row[column].strip())
+	
+#目的是把最后一列的标签从 string变成int
+#最后把对应关系代表的字典输出
+def str_column_to_int(dataSet,column):
+	class_values=[row[column] for row in dataSet]
+	unique=set(class_values)
+	lookup=dict()
+	for key,value in enumerate(unique):
+		lookup[value]=key
+	for row in dataSet:
+		row[column]=lookup[row[column]]
+	return lookup
+
+
+
+
+
+
+
+#输入的是实际分类 和 预测分类
+#得到的是预测准确率的百分比
+def accuracy_metric(actual,predicted):
+	correct=0
+	for i in range(len(actual)):
+		if actual[i]==predicted[i]:
+			correct+=1
+
+	return correct/float(len(actual))*100.0
+
+
+
+
+#############决策树的内容
+def test_split(index,value,dataSet):
+	left,right=list(),list()
+	for row in dataSet:
+		if row[index]<value:
+			left.append(row)
+		else:
+			right.append(row)
+
+	return left,right
+	#当groups=test_split(...)时，groups是一个元组，left，right是两个其中元素
+	#通过待测特征的值将数据划分为两个部分
+
+###基尼不纯度
+def gini_index(groups,class_values):
+	gini=0.0
+	total_size=float(len(groups[0])+len(groups[1]))
+	for class_value in class_values:
+		for group in groups:
+			size=len(group)
+			if size==0:
+				continue
+			proportion=[row[-1] for row in group].count(class_value)/float(size)
+			#proportion表示正确划分的比例
+			gini+=float(size)/total_size*(proportion*(1.0-proportion))
+			#这的是基尼不纯度
+			#如果全部划分正确为0，全部划分不正确也是0
+			#
+			#不是基于熵的
+	return gini
+
+#总体的数据集，和特征集，最终得到最优的其中其中一个特征
+#这个函数中dataSet没有改动
+#为什么不一样呢，是因为这里的测试集时浮点型的，很少有两个值一样，只能通过大小来区分
+def get_split(dataSet):
+	class_values=list(set(row[-1] for row in dataSet))
+	b_index,b_value,b_score,b_groups=999,999,999,None
+	
+
+	features=range(0,len(dataSet[0])-1)
+	# print(len(features))
+
+	##这个位置可以改进的，可以把内层循环去掉相同项
+	#并不是想要row 而是想要row[index]这个值
+	for index in features:
+		for row in dataSet:
+			groups=test_split(index,row[index],dataSet)
+			gini=gini_index(groups,class_values)
+			if gini<b_score:
+				b_index,b_value,b_score,b_groups=index,row[index],gini,groups
+				#index是特征的编号，row[index]是特征的值
+	return {'index':b_index,'value':b_value,'groups':b_groups}
+
+
+###到达指定情况(树深度)时，把该特征组合归为，标签数量最多的一类
+def to_terminal(group):
+	outcomes=[row[-1] for row in group]
+	return max(set(outcomes),key=outcomes.count)
+
+#利用递归获取树
+#多次调用了自己和get_split函数
+##树分的时候依旧有原来的特征，但是根据大小将两部分数据分开成左右部分
+##有的决策树没有分左右，这样通过值匹配找到类别很难
+def split(data,max_depth=1,minsize=1,depth=1):
+	labelList=[d[-1]  for d in data]
+	if (len(set(labelList))==1) or len(data)<minsize:
+		return to_terminal(data)
+
+
+	node=get_split(data)
+	left,right=node['groups'][0],node['groups'][1]
+
+	tree={'index':node['index'],'value':node['value'],'left':[],'right':[]}
+	# if not left or not right:
+	# 	tree['left']=tree['right']=to_terminal(left+right)
+		#如果其中一个为空，此时只计算另外一个就可以
+	tree['left']=split(left)
+	tree['right']=split(right)
+	return tree	
+
+
+
+
+def build_tree(train,max_depth,min_size):
+	# root=get_split(train)
+	root=split(train,max_depth,min_size,1)
+	return root
+################################决策树的内容
+#通过树node，解码，row属于哪一类
+def predict(node,row):
+	if row[node['index']]<node['value']:
+		
+		if isinstance(node['left'],dict):
+			return predict(node['left'],row)
+		else:
+			return node['left']
+	else:
+		if isinstance(node['right'],dict):
+			return predict(node['right'],row)
+		else:
+			return node['right']
+
+
+
+filename='sonar.all-data.csv'
+dataSet=load_csv(filename)
+
+for i in range(0,len(dataSet[0])-1):
+	str_column_to_float(dataSet,i)
+str_column_to_int(dataSet,len(dataSet[0])-1)
+
+
+max_depth=10
+min_size=3
+print(len(dataSet))
+tree=build_tree(dataSet[0:200],max_depth,min_size)
+print(tree)	
+
+####可视化
+import treePlotter2
+from pylab import *
+mpl.rcParams['font.sans-serif'] = ['SimHei']  # 指定默认字体
+mpl.rcParams['axes.unicode_minus'] = False  # 解决保存图像时负号'-'显示为方块的问题
+	# 测试决策树的构建
+	
+treePlotter2.createPlot(tree)
+###可视化	
+predictions=[predict(tree,row) for row in dataSet[150:]]
+
+realLabels=[row[-1] for row in dataSet[150:]]
+current=0
+for i in range(len(predictions)):
+	if predictions[i]==realLabels[i]:
+		current+=1
+
+print(current/len(predictions))
+
+
+
+
+
